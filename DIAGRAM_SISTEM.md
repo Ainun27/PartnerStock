@@ -14,8 +14,8 @@ Dokumen ini memuat diagram pemodelan berorientasi objek (*Object-Oriented Analys
    - [Activity 4: Evaluasi Otomatis CRM & Tindak Lanjut Churn Prevention](#activity-4-evaluasi-otomatis-crm--tindak-lanjut-churn-prevention)
    - [Activity 5: Portal Mandiri Warung & Pengajuan Restock (PO)](#activity-5-portal-mandiri-mitra-warung--pengajuan-restock-po)
    - [Activity 6: Rekapitulasi Laporan & Kalkulasi Finansial](#activity-6-rekapitulasi-laporan--kalkulasi-finansial)
-3. [Class Diagram (Arsitektur Model, Controller, Service & Relasi)](#3-class-diagram-komprehensif)
-4. [Entity Relationship Diagram (ERD Relasi Basis Data)](#4-entity-relationship-diagram-erd-relasi-basis-data)
+3. [Class Diagram Ringkas & Terpadu (5 Entitas Inti)](#3-class-diagram-ringkas--terpadu-5-entitas-inti-bisnis)
+4. [Entity Relationship Diagram (ERD Inti Sistem - 5 Tabel Utama)](#4-entity-relationship-diagram-erd-inti-sistem---5-tabel-utama)
 5. [Petunjuk Render PlantUML](#5-petunjuk-render-plantuml)
 
 ---
@@ -504,11 +504,11 @@ stop
 
 ---
 
-## 3. Class Diagram Terpadu (Domain Model, Service & Controller)
+## 3. Class Diagram Ringkas & Terpadu (5 Entitas Inti Bisnis)
 
-Class Diagram di bawah ini memodelkan arsitektur kode sumber platform **PartnerStock** yang telah disederhanakan dan terintegrasi secara modular:
-- **Lapisan Model Eloquent (10 Entitas Inti)**: Menyatukan pencatatan distribusi dan penjualan ke dalam `StokPenjualan`, serta permintaan restock ke dalam `PengajuanStok` tanpa redundansi.
-- **Lapisan Service Logika Bisnis**: `WmaService` (peramalan 3 periode), `RecommendationService` (rekomendasi muatan mode A/B), dan `CrmService` (deteksi churn & tindak lanjut).
+Class Diagram di bawah ini memodelkan struktur kode sumber platform **PartnerStock** secara minimalis dan tepat sasaran berfokus pada **5 Model Inti Bisnis**:
+- **Lapisan Model Eloquent (5 Entitas Utama)**: `User`, `Warung`, `Product`, `StokPenjualan` (menyatukan pencatatan distribusi, penjualan & retur), dan `PengajuanStok` (PO mandiri).
+- **Lapisan Service Logika Bisnis**: Peramalan WMA dan evaluasi CRM dijalankan secara dinamis (*real-time logic engine*) dari riwayat `StokPenjualan` tanpa membebani basis data dengan tabel tambahan.
 - **Lapisan Controller (MVC)**: Pengendali antarmuka web supplier dan portal mitra warung.
 
 ```plantuml
@@ -526,7 +526,7 @@ skinparam class {
     FontSize 10
 }
 
-package "App\\Models (Domain Data Entities)" {
+package "App\\Models (5 Entitas Bisnis Inti)" {
 
     class User {
         +id: int
@@ -536,27 +536,13 @@ package "App\\Models (Domain Data Entities)" {
         +role: string
         +is_active: bool
         --
-        +supplier(): BelongsTo
         +warung(): HasOne
         +isSupplier(): bool
         +isMitra(): bool
     }
 
-    class Supplier {
-        +id: int
-        +user_id: int
-        +business_name: string
-        +phone: string
-        +address: text
-        --
-        +user(): BelongsTo
-        +products(): HasMany
-        +warungs(): HasMany
-    }
-
     class Warung {
         +id: int
-        +supplier_id: int
         +user_id: int
         +nama_warung: string
         +nama_pemilik: string
@@ -571,19 +557,14 @@ package "App\\Models (Domain Data Entities)" {
         +delivery_interval_days: int
         +is_aktif: bool
         --
-        +supplier(): BelongsTo
+        +user(): BelongsTo
         +stokPenjualans(): HasMany
         +pengajuanStoks(): HasMany
-        +stockConfirmations(): HasMany
-        +stockRecommendations(): HasMany
-        +crmAlerts(): HasMany
-        +getLatestStockConfirmationAttribute(): StockConfirmation
         +getSesiTerakhirAttribute(): StokPenjualan
     }
 
     class Product {
         +id: int
-        +supplier_id: int
         +product_code: string
         +name: string
         +unit: string
@@ -591,7 +572,6 @@ package "App\\Models (Domain Data Entities)" {
         +cost_price: int
         +is_active: bool
         --
-        +supplier(): BelongsTo
         +stokPenjualans(): HasMany
     }
 
@@ -614,8 +594,7 @@ package "App\\Models (Domain Data Entities)" {
         --
         +warung(): BelongsTo
         +product(): BelongsTo
-        +{static} hitungKeputusan(taro: int, sisa: int, siklus: int): array
-        +getSisaFisikAttribute(value): int
+        +{static} hitungKeputusan(taro: int, sisa: int): array
     }
 
     class PengajuanStok {
@@ -630,75 +609,12 @@ package "App\\Models (Domain Data Entities)" {
         --
         +warung(): BelongsTo
         +getStatusLabelAttribute(): string
-        +getStatusBadgeClassAttribute(): string
-    }
-
-    class StockConfirmation {
-        +id: int
-        +supplier_id: int
-        +warung_id: int
-        +confirmation_date: date
-        +reported_remaining_stock: int
-        +physically_checked_stock: int
-        +data_status: string
-        +notes: text
-        --
-        +warung(): BelongsTo
-        +supplier(): BelongsTo
-    }
-
-    class StockRecommendation {
-        +id: int
-        +supplier_id: int
-        +warung_id: int
-        +calculation_date: date
-        +forecast_quantity: float
-        +recommended_quantity: int
-        +approved_quantity: int
-        +consignment_mode: string
-        +data_status: string
-        +adjustment_reason: text
-        --
-        +warung(): BelongsTo
-        +supplier(): BelongsTo
-    }
-
-    class CrmAlert {
-        +id: int
-        +supplier_id: int
-        +warung_id: int
-        +category: string
-        +trigger_type: string
-        +description: text
-        +evidence_data: json
-        +status: string
-        +resolved_at: datetime
-        --
-        +warung(): BelongsTo
-        +supplier(): BelongsTo
-        +followUps(): HasMany
-    }
-
-    class CrmFollowUp {
-        +id: int
-        +crm_alert_id: int
-        +supplier_id: int
-        +warung_id: int
-        +follow_up_date: date
-        +contact_method: string
-        +result_notes: text
-        +next_action: text
-        +status: string
-        --
-        +crmAlert(): BelongsTo
-        +warung(): BelongsTo
     }
 }
 
 package "App\\Services (Business Logic Engine)" {
 
     class WmaService {
-        +getWeights(): array
         +calculate(salesValues: array, customWeights: array): array
         +calculateForWarung(warung: Warung): array
     }
@@ -706,7 +622,6 @@ package "App\\Services (Business Logic Engine)" {
     class RecommendationService {
         -wmaService: WmaService
         --
-        +getDefaultConsignmentMode(): string
         +getRecommendationForWarung(warung: Warung, mode: string): array
         +getAllRecommendations(mode: string): array
     }
@@ -715,10 +630,8 @@ package "App\\Services (Business Logic Engine)" {
         -wmaService: WmaService
         -recService: RecommendationService
         --
-        +evaluateAll(supplierId: int): array
+        +evaluateAll(): array
         +evaluateWarung(warung: Warung): array
-        +recordFollowUp(alert: CrmAlert, method: string, notes: string, nextAction: string, status: string): CrmFollowUp
-        +getCrmSummary(supplierId: int): array
     }
 }
 
@@ -727,7 +640,6 @@ package "App\\Http\\Controllers (Application Web Layer)" {
     class AuthController {
         +showLogin(): View
         +login(request: Request): RedirectResponse
-        +loginDemo(): RedirectResponse
         +logout(request: Request): RedirectResponse
     }
 
@@ -764,7 +676,6 @@ package "App\\Http\\Controllers (Application Web Layer)" {
         +index(): View
         +authByPin(request: Request): RedirectResponse
         +show(kode_unik: string): View
-        +submitKonfirmasi(request: Request, kode_unik: string): RedirectResponse
         +submitPengajuan(request: Request, kode_unik: string): RedirectResponse
         +logout(): RedirectResponse
     }
@@ -772,69 +683,54 @@ package "App\\Http\\Controllers (Application Web Layer)" {
     class CrmController {
         -crmService: CrmService
         -wmaService: WmaService
-        -recService: RecommendationService
         --
         +index(request: Request): View
-        +storeFollowUp(request: Request, alertId: int): RedirectResponse
     }
 }
 
-' Relasi Antar Model (Data Relational Structure)
-User "1" *-- "0..1" Supplier : owns
-User "1" *-- "0..1" Warung : links to
-Supplier "1" *-- "0..*" Warung : manages
-Supplier "1" *-- "0..*" Product : manufactures
-Supplier "1" *-- "0..*" StockConfirmation : receives
-Supplier "1" *-- "0..*" StockRecommendation : calculates
-Supplier "1" *-- "0..*" CrmAlert : monitors
+' Relasi Antar Model Inti
+User "1" *-- "0..*" Warung : membina mitra
+User "1" *-- "0..1" Warung : akun portal warung
 
-Warung "1" *-- "0..*" StokPenjualan : records distribution & sales
-Warung "1" *-- "0..*" PengajuanStok : requests restock (PO)
-Warung "1" *-- "0..*" StockConfirmation : pre-visit confirmation
-Warung "1" *-- "0..*" StockRecommendation : forecast target
-Warung "1" *-- "0..*" CrmAlert : churn alerts
+Warung "1" *-- "0..*" StokPenjualan : riwayat transaksi konsinyasi
+Warung "1" *-- "0..*" PengajuanStok : permintaan tambahan (PO)
 
-Product "1" -- "0..*" StokPenjualan : consigned item
+Product "1" -- "0..*" StokPenjualan : item produk konsinyasi
 
-CrmAlert "1" *-- "0..*" CrmFollowUp : action history
-
-' Dependensi Service Layer
+' Dependensi Service Layer ke Model
 RecommendationService ..> WmaService : uses
 CrmService ..> WmaService : uses
-CrmService ..> RecommendationService : uses
 RecommendationService ..> Warung : evaluates
-WmaService ..> Warung : evaluates
-CrmService ..> CrmAlert : generates
+WmaService ..> StokPenjualan : calculates from history
+CrmService ..> StokPenjualan : monitors sales trends
 
-' Dependensi Controller
-DashboardController ..> CrmService : invokes evaluateAll()
+' Dependensi Controller ke Service & Model
+DashboardController ..> CrmService : invokes
 DashboardController ..> RecommendationService : queries
 DashboardController ..> Warung : queries
-KunjunganController ..> StokPenjualan : creates
+KunjunganController ..> StokPenjualan : records visit
 KunjunganController ..> Warung : updates stock
 WarungPortalController ..> Warung : authenticates PIN
 WarungPortalController ..> PengajuanStok : stores PO
-WarungPortalController ..> StockConfirmation : stores confirmation
-PengajuanAdminController ..> PengajuanStok : updates status
-CrmController ..> CrmService : invokes evaluateAll()
+PengajuanAdminController ..> PengajuanStok : manages status
+CrmController ..> CrmService : displays alerts
 
 @enduml
 ```
 
 ---
 
-## 4. Entity Relationship Diagram (ERD Relasi Basis Data Hasil Revisi)
+## 4. Entity Relationship Diagram (ERD Inti Sistem - 5 Tabel Utama)
 
-Diagram ERD (*Entity-Relationship Diagram*) di bawah ini memodelkan struktur basis data **PartnerStock (PostgreSQL: `konsinyasi_pisang`)** hasil penyederhanaan arsitektur menggunakan notasi resmi **Crow's Foot (IE Notation)**:
+Diagram ERD (*Entity-Relationship Diagram*) di bawah ini memodelkan struktur basis data inti **PartnerStock (PostgreSQL: `konsinyasi_pisang`)** yang berfokus pada 5 entitas bisnis utama menggunakan notasi resmi **Crow's Foot (IE Notation)**:
 
-> [!NOTE]
-> **Penyederhanaan Utama**:
-> 1. Transaksi distribusi dan penjualan disatukan ke dalam `stok_penjualans` (mencakup stok sebelumnya, sisa fisik, terjual, titip baru, retur stok lama, dan pendapatan).
-> 2. Permintaan tambahan restock warung (PO) murni ditangani oleh `pengajuan_stoks`.
-> 3. Tabel infrastruktur *framework* (`sessions`, `cache`, `jobs`, `migrations`) dikecualikan dari pemodelan bisnis ini.
+> [!TIP]
+> **Kaidah Akademik Database Bersih**:
+> - Hanya menampilkan 5 entitas nyata bisnis konsinyasi: Pengguna, Mitra Warung, Produk Keripik, Riwayat Distribusi/Penjualan, dan Permintaan Restock (PO).
+> - Perhitungan peramalan WMA dan evaluasi CRM dijalankan secara dinamis (*real-time logic*) di lapisan aplikasi, sehingga basis data memenuhi prinsip **Third Normal Form (3NF)** tanpa menyimpan data kalkulasi berulang (*no derived redundancy*).
 
 ```plantuml
-@startuml erd_partnerstock
+@startuml erd_partnerstock_simple
 !theme plain
 skinparam backgroundColor #FFFFFF
 skinparam shadowing false
@@ -861,21 +757,9 @@ entity "users" as users {
     updated_at : TIMESTAMP
 }
 
-entity "suppliers" as suppliers {
-    * id : BIGINT <<PK>>
-    --
-    * user_id : BIGINT <<FK>>
-    * business_name : VARCHAR(255)
-    phone : VARCHAR(50)
-    address : TEXT
-    created_at : TIMESTAMP
-    updated_at : TIMESTAMP
-}
-
 entity "warungs" as warungs {
     * id : BIGINT <<PK>>
     --
-    * supplier_id : BIGINT <<FK>>
     user_id : BIGINT <<FK>>
     * nama_warung : VARCHAR(255)
     nama_pemilik : VARCHAR(255)
@@ -897,7 +781,6 @@ entity "warungs" as warungs {
 entity "products" as products {
     * id : BIGINT <<PK>>
     --
-    * supplier_id : BIGINT <<FK>>
     * product_code : VARCHAR(50)
     * name : VARCHAR(255)
     unit : VARCHAR(50)
@@ -943,95 +826,14 @@ entity "pengajuan_stoks" as pengajuan_stoks {
     updated_at : TIMESTAMP
 }
 
-entity "stock_confirmations" as stock_confirmations {
-    * id : BIGINT <<PK>>
-    --
-    * supplier_id : BIGINT <<FK>>
-    * warung_id : BIGINT <<FK>>
-    confirmation_date : DATE
-    reported_remaining_stock : INT
-    physically_checked_stock : INT
-    data_status : VARCHAR(50) [menunggu_pemeriksaan / sesuai / selisih]
-    notes : TEXT
-    created_at : TIMESTAMP
-    updated_at : TIMESTAMP
-}
-
-entity "stock_recommendations" as stock_recommendations {
-    * id : BIGINT <<PK>>
-    --
-    * supplier_id : BIGINT <<FK>>
-    * warung_id : BIGINT <<FK>>
-    calculation_date : DATE
-    forecast_quantity : DECIMAL(8,2)
-    recommended_quantity : INT
-    approved_quantity : INT
-    consignment_mode : VARCHAR(10) [A / B]
-    data_status : VARCHAR(50) [cukup / belum_cukup]
-    adjustment_reason : TEXT
-    created_at : TIMESTAMP
-    updated_at : TIMESTAMP
-}
-
-entity "crm_alerts" as crm_alerts {
-    * id : BIGINT <<PK>>
-    --
-    * supplier_id : BIGINT <<FK>>
-    * warung_id : BIGINT <<FK>>
-    category : VARCHAR(100) [churn_prevention / data_mining / reorder]
-    trigger_type : VARCHAR(100)
-    description : TEXT
-    evidence_data : JSON
-    status : VARCHAR(50) [perlu_ditinjau / perlu_dihubungi / sudah_dihubungi / selesai]
-    resolved_at : TIMESTAMP
-    created_at : TIMESTAMP
-    updated_at : TIMESTAMP
-}
-
-entity "crm_follow_ups" as crm_follow_ups {
-    * id : BIGINT <<PK>>
-    --
-    * crm_alert_id : BIGINT <<FK>>
-    * supplier_id : BIGINT <<FK>>
-    * warung_id : BIGINT <<FK>>
-    follow_up_date : DATE
-    contact_method : VARCHAR(50) [whatsapp / telepon / kunjungan_langsung]
-    result_notes : TEXT
-    next_action : TEXT
-    status : VARCHAR(50) [selesai / dalam_proses]
-    created_at : TIMESTAMP
-    updated_at : TIMESTAMP
-}
-
-' ========================================================
 ' Relasi Antar Entitas (Crow's Foot Notation)
-' ========================================================
+users ||--o| warungs : "1 user opsional terhubung ke 1 akun warung"
+users ||--o{ warungs : "1 supplier mengelola banyak mitra warung"
 
-' Relasi Pengguna & Profil Usaha
-users ||--o| suppliers : "1 user memiliki 0..1 profil supplier"
-users ||--o| warungs : "1 user opsional terhubung ke 0..1 warung"
+warungs ||--o{ stok_penjualans : "1 warung memiliki banyak riwayat transaksi konsinyasi"
+warungs ||--o{ pengajuan_stoks : "1 warung dapat mengajukan banyak permintaan stok (PO)"
 
-' Relasi Supplier ke Entitas Operasional
-suppliers ||--o{ warungs : "membina banyak warung mitra"
-suppliers ||--o{ products : "memproduksi katalog produk"
-suppliers ||--o{ stock_confirmations : "menerima konfirmasi sisa stok H-2"
-suppliers ||--o{ stock_recommendations : "menghasilkan peramalan WMA"
-suppliers ||--o{ crm_alerts : "memantau peringatan churn & tren"
-suppliers ||--o{ crm_follow_ups : "menjalankan aksi retensi"
-
-' Relasi Warung ke Transaksi Operasional
-warungs ||--o{ stok_penjualans : "riwayat distribusi & penjualan konsinyasi"
-warungs ||--o{ pengajuan_stoks : "mengajukan pesanan restock (PO)"
-warungs ||--o{ stock_confirmations : "melaporkan sisa stok pra-kunjungan"
-warungs ||--o{ stock_recommendations : "target rekomendasi muatan armada"
-warungs ||--o{ crm_alerts : "memiliki evaluasi risiko churn"
-
-' Relasi Produk ke Konsinyasi
-products ||--o{ stok_penjualans : "item barang yang dikonsinyasikan"
-
-' Relasi Alur Kerja Khusus
-crm_alerts ||--o{ crm_follow_ups : "1 alert ditindaklanjuti 1..* follow up"
-stock_confirmations ||--o| stock_recommendations : "sisa stok H-2 menjadi dasar rekomendasi Mode B"
+products ||--o{ stok_penjualans : "1 jenis produk dititipkan di banyak transaksi konsinyasi"
 
 @enduml
 ```
