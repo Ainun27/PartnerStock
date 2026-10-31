@@ -42,7 +42,7 @@
         @forelse($warungs as $warung)
             <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-md shadow-slate-200/60 hover:shadow-lg hover:border-amber-400/60 transition-all duration-200 flex flex-col justify-between gap-3.5">
                 
-                <!-- Baris Atas: Nama Warung, Status & Tombol Edit (Tanpa Kode Warung) -->
+                <!-- Baris Atas: Nama Warung, Status & Tombol Edit / Hapus -->
                 <div class="flex items-start justify-between gap-2 pb-3 border-b border-slate-100">
                     <h2 class="font-heading font-black text-slate-900 text-sm sm:text-base leading-snug">
                         {{ $warung->nama_warung }}
@@ -52,9 +52,18 @@
                             {{ $warung->is_aktif ? 'Aktif' : 'Nonaktif' }}
                         </span>
                         <a href="{{ route('admin.warung.edit', $warung->id) }}" 
-                           class="app-btn-secondary px-3 py-1 text-xs font-bold cursor-pointer">
+                           class="app-btn-secondary px-2.5 py-1 text-xs font-bold cursor-pointer">
                             Edit
                         </a>
+                        <form method="POST" action="{{ route('admin.warung.destroy', $warung->id) }}" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus mitra {{ addslashes($warung->nama_warung) }}?')">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" 
+                                    title="Hapus Mitra Warung"
+                                    class="px-2.5 py-1 text-xs font-bold rounded-xl text-rose-600 hover:text-white bg-rose-50 hover:bg-rose-600 border border-rose-200 hover:border-rose-600 transition cursor-pointer">
+                                Hapus
+                            </button>
+                        </form>
                     </div>
                 </div>
 

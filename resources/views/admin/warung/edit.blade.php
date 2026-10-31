@@ -121,14 +121,27 @@
                 </div>
             </div>
 
-            <div class="pt-3 border-t border-stone-100 flex items-center justify-end gap-2">
-                <a href="{{ route('admin.warung.index') }}" class="app-btn-secondary px-4 py-2 text-xs font-bold">
-                    Batal
-                </a>
-                <button type="submit" class="app-btn-primary px-5 py-2 text-xs font-bold shadow-2xs cursor-pointer">
-                    Perbarui Data
+            <div class="pt-3 border-t border-stone-100 flex items-center justify-between gap-2">
+                <button type="button" 
+                        onclick="if(confirm('Apakah Anda yakin ingin menghapus warung {{ addslashes($warung->nama_warung) }}?')) { document.getElementById('deleteWarungForm').submit(); }"
+                        class="px-3.5 py-2 text-xs font-bold rounded-xl text-rose-600 hover:text-white bg-rose-50 hover:bg-rose-600 border border-rose-200 hover:border-rose-600 transition cursor-pointer">
+                    Hapus Mitra
                 </button>
+
+                <div class="flex items-center gap-2">
+                    <a href="{{ route('admin.warung.index') }}" class="app-btn-secondary px-4 py-2 text-xs font-bold">
+                        Batal
+                    </a>
+                    <button type="submit" class="app-btn-primary px-5 py-2 text-xs font-bold shadow-2xs cursor-pointer">
+                        Perbarui Data
+                    </button>
+                </div>
             </div>
+        </form>
+
+        <form id="deleteWarungForm" method="POST" action="{{ route('admin.warung.destroy', $warung->id) }}" class="hidden">
+            @csrf
+            @method('DELETE')
         </form>
     </div>
 

@@ -116,9 +116,9 @@
                 </span>
             </div>
             <div>
-                <span class="block mb-8 text-[11px]">Pemasok / Distributor</span>
+                <span class="block mb-8 text-[11px]">Pemasok / Supplier</span>
                 <span class="font-bold text-stone-900 block border-b border-stone-300 pb-1 max-w-[130px] mx-auto">
-                    Distributor
+                    Supplier
                 </span>
             </div>
         </div>

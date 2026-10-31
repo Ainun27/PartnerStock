@@ -25,7 +25,7 @@
                     </div>
                 </a>
                 <h1 class="font-heading text-xl font-black text-white tracking-tight">PartnerStock</h1>
-                <p class="text-[11px] text-amber-400 font-bold uppercase tracking-wider">Portal Distributor Konsinyasi</p>
+                <p class="text-[11px] text-amber-400 font-bold uppercase tracking-wider">Portal Supplier Konsinyasi</p>
             </div>
 
             <div class="p-6 space-y-4">

@@ -18,7 +18,7 @@
                 </div>
                 <div>
                     <span class="font-extrabold text-white text-sm block leading-tight">PartnerStock</span>
-                    <span class="text-[10px] text-amber-400 font-semibold">Distributor</span>
+                    <span class="text-[10px] text-amber-400 font-semibold">Supplier</span>
                 </div>
             </a>
 
@@ -43,7 +43,7 @@
                         </div>
                         <div>
                             <span class="font-heading text-base font-black text-white tracking-tight block leading-tight">PartnerStock</span>
-                            <span class="text-[11px] text-amber-400 font-semibold tracking-wider uppercase block">Distributor</span>
+                            <span class="text-[11px] text-amber-400 font-semibold tracking-wider uppercase block">Supplier</span>
                         </div>
                     </a>
                 </div>
@@ -97,14 +97,8 @@
                 </nav>
             </div>
 
-            <!-- Footer Sidebar: Portal & Logout -->
-            <div class="pt-3 border-t border-slate-800 space-y-1 text-xs">
-                <a href="{{ route('portal.index') }}" 
-                   class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-100 hover:bg-slate-800 hover:text-amber-400 transition font-bold">
-                    <span>🏪</span>
-                    <span>Portal Mitra Warung</span>
-                </a>
-                
+            <!-- Footer Sidebar: Logout -->
+            <div class="pt-3 border-t border-slate-800 text-xs">
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button type="submit" 
