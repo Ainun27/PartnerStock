@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CrmAlert;
 use App\Models\CrmFollowUp;
+use App\Models\PengajuanStok;
 use App\Models\StockRequest;
 use App\Models\SystemSetting;
 use App\Models\Warung;
@@ -75,7 +76,6 @@ class CrmService
 
                 if (!$existing) {
                     $alert = CrmAlert::create([
-                        'supplier_id' => $warung->supplier_id ?: 1,
                         'warung_id' => $warung->id,
                         'category' => 'churn_prevention',
                         'trigger_type' => 'penurunan_penjualan_3_periode',
@@ -97,17 +97,8 @@ class CrmService
         $deliveryInterval = $warung->delivery_interval_days ?: 14;
         $maxDormantDays = $deliveryInterval * 2; // Default 28 hari
 
-        $lastRestock = $warung->restocks()->orderBy('distribution_date', 'desc')->first();
-        $lastVisitDate = null;
-
-        if ($lastRestock && $lastRestock->distribution_date) {
-            $lastVisitDate = Carbon::parse($lastRestock->distribution_date);
-        } else {
-            $lastSesi = $warung->stokPenjualans()->whereNotNull('tanggal_cek')->orderBy('tanggal_cek', 'desc')->first();
-            if ($lastSesi && $lastSesi->tanggal_cek) {
-                $lastVisitDate = Carbon::parse($lastSesi->tanggal_cek);
-            }
-        }
+        $lastSesi = $warung->stokPenjualans()->whereNotNull('tanggal_cek')->orderBy('tanggal_cek', 'desc')->first();
+        $lastVisitDate = ($lastSesi && $lastSesi->tanggal_cek) ? Carbon::parse($lastSesi->tanggal_cek) : null;
 
         if ($lastVisitDate) {
             $daysSinceVisit = $lastVisitDate->diffInDays(now());
@@ -120,7 +111,6 @@ class CrmService
 
                 if (!$existingDormant) {
                     $alert = CrmAlert::create([
-                        'supplier_id' => $warung->supplier_id ?: 1,
                         'warung_id' => $warung->id,
                         'category' => 'churn_prevention',
                         'trigger_type' => 'tanpa_restock_2_siklus',
@@ -139,8 +129,8 @@ class CrmService
         }
 
         // 3. Peringatan Reorder: Warung dengan permintaan stok tambahan yang menunggu persetujuan
-        $pendingRequests = StockRequest::where('warung_id', $warung->id)
-            ->where('status', 'menunggu')
+        $pendingRequests = PengajuanStok::where('warung_id', $warung->id)
+            ->where('status', 'pending')
             ->get();
 
         if ($pendingRequests->isNotEmpty()) {
@@ -151,9 +141,8 @@ class CrmService
                 ->first();
 
             if (!$existingReqAlert) {
-                $totalRequested = $pendingRequests->sum('requested_quantity');
+                $totalRequested = $pendingRequests->sum('jumlah_diminta');
                 $alert = CrmAlert::create([
-                    'supplier_id' => $warung->supplier_id ?: 1,
                     'warung_id' => $warung->id,
                     'category' => 'reorder_recommendation',
                     'trigger_type' => 'permintaan_stok_tambahan',

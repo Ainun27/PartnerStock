@@ -2,47 +2,59 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-
-class StockRequest extends Model
+class StockRequest
 {
-    use HasFactory;
-
-    protected $fillable = [
-        'supplier_id',
-        'warung_id',
-        'product_id',
-        'requested_quantity',
-        'approved_quantity',
-        'reason',
-        'status',
-        'requested_at',
-        'reviewed_at',
-        'fulfilled_at',
-    ];
-
-    protected $casts = [
-        'requested_quantity' => 'integer',
-        'approved_quantity' => 'integer',
-        'requested_at' => 'datetime',
-        'reviewed_at' => 'datetime',
-        'fulfilled_at' => 'datetime',
-    ];
-
-    public function supplier(): BelongsTo
+    public static function create(array $attributes): PengajuanStok
     {
-        return $this->belongsTo(Supplier::class);
+        return PengajuanStok::create([
+            'warung_id' => $attributes['warung_id'],
+            'tanggal_pengajuan' => $attributes['requested_at'] ?? now()->toDateString(),
+            'jumlah_diminta' => $attributes['requested_quantity'] ?? 0,
+            'status' => 'pending',
+            'catatan' => $attributes['reason'] ?? null,
+        ]);
     }
 
-    public function warung(): BelongsTo
+    public static function firstOrCreate(array $attributes, array $values = []): PengajuanStok
     {
-        return $this->belongsTo(Warung::class);
+        return PengajuanStok::firstOrCreate(
+            ['warung_id' => $attributes['warung_id']],
+            [
+                'tanggal_pengajuan' => $values['requested_at'] ?? now()->toDateString(),
+                'jumlah_diminta' => $attributes['requested_quantity'] ?? 10,
+                'status' => 'pending',
+                'catatan' => $values['reason'] ?? null,
+            ]
+        );
     }
 
-    public function product(): BelongsTo
+    public static function updateOrCreate(array $attributes, array $values = []): PengajuanStok
     {
-        return $this->belongsTo(Product::class);
+        return PengajuanStok::updateOrCreate(
+            ['warung_id' => $attributes['warung_id']],
+            [
+                'tanggal_pengajuan' => $values['requested_at'] ?? now()->toDateString(),
+                'jumlah_diminta' => $values['requested_quantity'] ?? 10,
+                'status' => 'pending',
+                'catatan' => $values['reason'] ?? null,
+            ]
+        );
+    }
+
+    public static function where(string $col, mixed $op = null, mixed $val = null)
+    {
+        if ($col === 'status') {
+            $statusVal = ($val === null) ? $op : $val;
+            if ($statusVal === 'menunggu') {
+                $statusVal = 'pending';
+            }
+            return PengajuanStok::where('status', $statusVal);
+        }
+        return PengajuanStok::where($col, $op, $val);
+    }
+
+    public static function with(mixed $relations)
+    {
+        return PengajuanStok::with($relations);
     }
 }

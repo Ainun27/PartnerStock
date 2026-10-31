@@ -65,7 +65,6 @@ class WarungController extends Controller
         $stokAwal = (int) ($validated['stok_awal'] ?? 0);
 
         $warung = Warung::create([
-            'supplier_id' => 1,
             'name' => $validated['nama_warung'],
             'nama_warung' => $validated['nama_warung'],
             'owner_name' => $validated['nama_pemilik'],
@@ -106,7 +105,7 @@ class WarungController extends Controller
 
     public function show($id)
     {
-        $warung = Warung::with(['stokPenjualans', 'pengajuanStoks', 'salesRecords', 'restocks', 'stockConfirmations', 'crmAlerts'])->findOrFail($id);
+        $warung = Warung::with(['stokPenjualans', 'pengajuanStoks'])->findOrFail($id);
 
         $riwayatStok = $warung->stokPenjualans()->paginate(10);
         $rekomendasi = $warung->rekomendasi_stok;

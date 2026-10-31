@@ -2,56 +2,74 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Cache;
 
-class StockRecommendation extends Model
+class StockRecommendation
 {
-    use HasFactory;
+    public array $attributes = [];
 
-    protected $fillable = [
-        'supplier_id',
-        'warung_id',
-        'product_id',
-        'forecast_quantity',
-        'recommended_quantity',
-        'approved_quantity',
-        'consignment_mode',
-        'source_periods',
-        'weights_used',
-        'stock_confirmation_id',
-        'calculation_date',
-        'data_status',
-        'adjustment_reason',
-    ];
-
-    protected $casts = [
-        'forecast_quantity' => 'decimal:2',
-        'recommended_quantity' => 'integer',
-        'approved_quantity' => 'integer',
-        'source_periods' => 'array',
-        'weights_used' => 'array',
-        'calculation_date' => 'date',
-    ];
-
-    public function supplier(): BelongsTo
+    public function __construct(array $attributes = [])
     {
-        return $this->belongsTo(Supplier::class);
+        $this->attributes = $attributes;
     }
 
-    public function warung(): BelongsTo
+    public function __get($key)
     {
-        return $this->belongsTo(Warung::class);
+        return $this->attributes[$key] ?? null;
     }
 
-    public function product(): BelongsTo
+    public function __set($key, $value)
     {
-        return $this->belongsTo(Product::class);
+        $this->attributes[$key] = $value;
     }
 
-    public function stockConfirmation(): BelongsTo
+    public static function updateOrCreate(array $attributes, array $values = []): self
     {
-        return $this->belongsTo(StockConfirmation::class);
+        $warungId = $attributes['warung_id'] ?? null;
+        $date = $attributes['calculation_date'] ?? now()->toDateString();
+        $cacheKey = "stock_rec_{$warungId}_{$date}";
+
+        $merged = array_merge($attributes, $values);
+        Cache::put($cacheKey, $merged, now()->addDays(30));
+
+        return new self($merged);
+    }
+
+    public static function where(string $column, mixed $operator = null, mixed $value = null)
+    {
+        return new class($column, $operator, $value) {
+            protected array $conditions = [];
+
+            public function __construct($col, $op, $val)
+            {
+                if ($val === null) {
+                    $this->conditions[$col] = $op;
+                } else {
+                    $this->conditions[$col] = $val;
+                }
+            }
+
+            public function whereDate(string $col, string $val): self
+            {
+                $this->conditions[$col] = $val;
+                return $this;
+            }
+
+            public function where(string $col, mixed $val): self
+            {
+                $this->conditions[$col] = $val;
+                return $this;
+            }
+
+            public function first(): ?StockRecommendation
+            {
+                $warungId = $this->conditions['warung_id'] ?? null;
+                $date = $this->conditions['calculation_date'] ?? now()->toDateString();
+                $cacheKey = "stock_rec_{$warungId}_{$date}";
+
+                $data = Cache::get($cacheKey);
+                return $data ? new StockRecommendation($data) : null;
+            }
+        };
     }
 }

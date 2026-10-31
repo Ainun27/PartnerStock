@@ -2,44 +2,41 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-
-class Restock extends Model
+class Restock
 {
-    use HasFactory;
-
-    protected $fillable = [
-        'supplier_id',
-        'warung_id',
-        'product_id',
-        'distribution_date',
-        'quantity_delivered',
-        'old_stock_withdrawn',
-        'approved_quantity',
-        'notes',
-    ];
-
-    protected $casts = [
-        'distribution_date' => 'date',
-        'quantity_delivered' => 'integer',
-        'old_stock_withdrawn' => 'integer',
-        'approved_quantity' => 'integer',
-    ];
-
-    public function supplier(): BelongsTo
+    public static function create(array $attributes = []): ?StokPenjualan
     {
-        return $this->belongsTo(Supplier::class);
+        $distributionDate = $attributes['distribution_date'] ?? now()->toDateString();
+        $existing = StokPenjualan::where('warung_id', $attributes['warung_id'])
+            ->whereDate('tanggal_cek', $distributionDate)
+            ->first();
+
+        if ($existing) {
+            $existing->update([
+                'jumlah_titip' => $attributes['quantity_delivered'] ?? $existing->jumlah_titip,
+                'old_stock_withdrawn' => $attributes['old_stock_withdrawn'] ?? $existing->old_stock_withdrawn,
+            ]);
+            return $existing;
+        }
+
+        return StokPenjualan::create([
+            'warung_id' => $attributes['warung_id'],
+            'product_id' => $attributes['product_id'] ?? null,
+            'tipe_transaksi' => 'titip_awal',
+            'tanggal_titip' => $distributionDate,
+            'jumlah_titip' => $attributes['quantity_delivered'] ?? 0,
+            'old_stock_withdrawn' => $attributes['old_stock_withdrawn'] ?? 0,
+            'stok_sebelumnya' => 0,
+            'sisa_fisik' => 0,
+            'jumlah_laku' => 0,
+            'sisa_stok' => $attributes['quantity_delivered'] ?? 0,
+            'total_pendapatan' => 0,
+            'catatan' => $attributes['notes'] ?? null,
+        ]);
     }
 
-    public function warung(): BelongsTo
+    public static function __callStatic($method, $parameters)
     {
-        return $this->belongsTo(Warung::class);
-    }
-
-    public function product(): BelongsTo
-    {
-        return $this->belongsTo(Product::class);
+        return StokPenjualan::$method(...$parameters);
     }
 }

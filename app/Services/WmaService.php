@@ -143,44 +143,24 @@ class WmaService
      */
     public function calculateForWarung(Warung $warung): array
     {
-        // Ambil riwayat penjualan dari sales_records terlebih dahulu (urutan kronologis dari terlama ke terbaru)
-        $records = $warung->salesRecords()
+        // Ambil riwayat penjualan langsung dari stok_penjualans (urutan kronologis terlama ke terbaru)
+        $sesiList = $warung->stokPenjualans()
+            ->whereNotNull('tanggal_cek')
             ->reorder()
-            ->orderBy('period_end', 'asc')
+            ->orderBy('tanggal_cek', 'asc')
             ->orderBy('id', 'asc')
             ->get();
 
-        if ($records->isNotEmpty()) {
-            $salesValues = $records->pluck('sold_quantity')->all();
-            $periodMeta = $records->map(function ($r) {
-                return [
-                    'id' => $r->id,
-                    'start' => $r->period_start ? $r->period_start->format('d/m/Y') : null,
-                    'end' => $r->period_end ? $r->period_end->format('d/m/Y') : null,
-                    'sold' => (int) $r->sold_quantity,
-                    'distributed' => (int) $r->distributed_quantity,
-                ];
-            })->all();
-        } else {
-            // Fallback ke stok_penjualans jika belum ada sales_records terpisah
-            $sesiList = $warung->stokPenjualans()
-                ->whereNotNull('tanggal_cek')
-                ->reorder()
-                ->orderBy('tanggal_cek', 'asc')
-                ->orderBy('id', 'asc')
-                ->get();
-
-            $salesValues = $sesiList->pluck('jumlah_laku')->all();
-            $periodMeta = $sesiList->map(function ($s) {
-                return [
-                    'id' => $s->id,
-                    'start' => $s->tanggal_titip ? $s->tanggal_titip->format('d/m/Y') : null,
-                    'end' => $s->tanggal_cek ? $s->tanggal_cek->format('d/m/Y') : null,
-                    'sold' => (int) $s->jumlah_laku,
-                    'distributed' => (int) $s->stok_sebelumnya,
-                ];
-            })->all();
-        }
+        $salesValues = $sesiList->pluck('jumlah_laku')->all();
+        $periodMeta = $sesiList->map(function ($s) {
+            return [
+                'id' => $s->id,
+                'start' => $s->tanggal_titip ? $s->tanggal_titip->format('d/m/Y') : ($s->tanggal_cek ? $s->tanggal_cek->format('d/m/Y') : null),
+                'end' => $s->tanggal_cek ? $s->tanggal_cek->format('d/m/Y') : null,
+                'sold' => (int) $s->jumlah_laku,
+                'distributed' => (int) $s->stok_sebelumnya,
+            ];
+        })->all();
 
         $result = $this->calculate($salesValues);
         $result['period_meta'] = array_slice($periodMeta, -3);

@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Product extends Model
@@ -12,7 +11,6 @@ class Product extends Model
     use HasFactory;
 
     protected $fillable = [
-        'supplier_id',
         'product_code',
         'name',
         'unit',
@@ -27,28 +25,8 @@ class Product extends Model
         'is_active' => 'boolean',
     ];
 
-    public function supplier(): BelongsTo
+    public function stokPenjualans(): HasMany
     {
-        return $this->belongsTo(Supplier::class);
-    }
-
-    public function salesRecords(): HasMany
-    {
-        return $this->hasMany(SalesRecord::class);
-    }
-
-    public function restocks(): HasMany
-    {
-        return $this->hasMany(Restock::class);
-    }
-
-    public function stockRequests(): HasMany
-    {
-        return $this->hasMany(StockRequest::class);
-    }
-
-    public function stockRecommendations(): HasMany
-    {
-        return $this->hasMany(StockRecommendation::class);
+        return $this->hasMany(StokPenjualan::class, 'product_id');
     }
 }

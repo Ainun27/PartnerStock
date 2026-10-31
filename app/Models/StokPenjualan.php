@@ -62,6 +62,42 @@ class StokPenjualan extends Model
         return max(0, (int) $this->stok_sebelumnya - (int) $this->jumlah_laku);
     }
 
+    // Accessor kompatibilitas laporan konsinyasi (terintegrasi ke 1 tabel stok_penjualans)
+    public function getPeriodEndAttribute()
+    {
+        return $this->tanggal_cek;
+    }
+
+    public function getPeriodStartAttribute()
+    {
+        return $this->tanggal_titip ?: $this->tanggal_cek;
+    }
+
+    public function getOpeningStockAttribute(): int
+    {
+        return (int) $this->stok_sebelumnya;
+    }
+
+    public function getRemainingStockAttribute(): int
+    {
+        return (int) $this->sisa_fisik;
+    }
+
+    public function getSoldQuantityAttribute(): int
+    {
+        return (int) $this->jumlah_laku;
+    }
+
+    public function getDistributionDateAttribute()
+    {
+        return $this->tanggal_titip ?: $this->tanggal_cek;
+    }
+
+    public function getQuantityDeliveredAttribute(): int
+    {
+        return (int) $this->jumlah_titip;
+    }
+
     /**
      * Algoritma Keputusan Stok Konsinyasi: Periodic Review Inventory Model (Siklus 14 Hari / 2 Minggu)
      * Pak Aceng berkunjung rutin 2 minggu sekali (Review Period T = 14 hari).

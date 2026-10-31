@@ -16,9 +16,6 @@ class StockConfirmationController extends Controller
         $selectedWarungId = $request->query('warung_id');
         $warungs = Warung::where('partnership_status', 'aktif')
             ->where('is_aktif', true)
-            ->with(['stockConfirmations' => function ($q) {
-                $q->orderBy('confirmation_date', 'desc');
-            }])
             ->orderBy('nama_warung')
             ->get();
 
@@ -46,7 +43,6 @@ class StockConfirmationController extends Controller
         $confDate = $validated['confirmation_date'] ?? date('Y-m-d');
 
         $confirmation = StockConfirmation::create([
-            'supplier_id' => $warung->supplier_id ?: 1,
             'warung_id' => $warung->id,
             'confirmation_date' => $confDate,
             'reported_remaining_stock' => $validated['reported_remaining_stock'],

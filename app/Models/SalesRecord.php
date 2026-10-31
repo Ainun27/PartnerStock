@@ -2,49 +2,29 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-
-class SalesRecord extends Model
+class SalesRecord
 {
-    use HasFactory;
-
-    protected $fillable = [
-        'supplier_id',
-        'warung_id',
-        'product_id',
-        'period_start',
-        'period_end',
-        'distributed_quantity',
-        'opening_stock',
-        'remaining_stock',
-        'sold_quantity',
-        'verified_at',
-    ];
-
-    protected $casts = [
-        'period_start' => 'date',
-        'period_end' => 'date',
-        'distributed_quantity' => 'integer',
-        'opening_stock' => 'integer',
-        'remaining_stock' => 'integer',
-        'sold_quantity' => 'integer',
-        'verified_at' => 'datetime',
-    ];
-
-    public function supplier(): BelongsTo
+    public static function create(array $attributes = []): StokPenjualan
     {
-        return $this->belongsTo(Supplier::class);
+        $mapped = [
+            'warung_id' => $attributes['warung_id'],
+            'product_id' => $attributes['product_id'] ?? null,
+            'tipe_transaksi' => 'sesi',
+            'tanggal_titip' => $attributes['period_start'] ?? null,
+            'tanggal_cek' => $attributes['period_end'] ?? now()->toDateString(),
+            'stok_sebelumnya' => $attributes['opening_stock'] ?? ($attributes['distributed_quantity'] ?? 0),
+            'sisa_fisik' => $attributes['remaining_stock'] ?? 0,
+            'jumlah_laku' => $attributes['sold_quantity'] ?? 0,
+            'sisa_stok' => $attributes['remaining_stock'] ?? 0,
+            'total_pendapatan' => ($attributes['sold_quantity'] ?? 0) * 12000,
+            'keputusan_stok' => 'Rekam Penjualan Konsinyasi',
+        ];
+
+        return StokPenjualan::create($mapped);
     }
 
-    public function warung(): BelongsTo
+    public static function __callStatic($method, $parameters)
     {
-        return $this->belongsTo(Warung::class);
-    }
-
-    public function product(): BelongsTo
-    {
-        return $this->belongsTo(Product::class);
+        return StokPenjualan::$method(...$parameters);
     }
 }

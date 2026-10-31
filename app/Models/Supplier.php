@@ -2,74 +2,33 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-
-class Supplier extends Model
+class Supplier
 {
-    use HasFactory;
+    public int $id = 1;
+    public int $user_id = 1;
+    public string $business_name = 'Keripik Pisang Original Pak Aceng';
+    public string $phone = '081298765432';
+    public string $address = 'Sentra UMKM Keripik Pisang, Bantul, D.I. Yogyakarta';
 
-    protected $fillable = [
-        'user_id',
-        'business_name',
-        'phone',
-        'address',
-    ];
-
-    public function user(): BelongsTo
+    public function __construct(array $attributes = [])
     {
-        return $this->belongsTo(User::class);
+        foreach ($attributes as $k => $v) {
+            $this->{$k} = $v;
+        }
     }
 
-    public function warungs(): HasMany
+    public function user()
     {
-        return $this->hasMany(Warung::class);
+        return User::find($this->user_id);
     }
 
-    public function products(): HasMany
+    public static function updateOrCreate(array $attributes = [], array $values = []): self
     {
-        return $this->hasMany(Product::class);
+        return new self(array_merge($attributes, $values));
     }
 
-    public function stockConfirmations(): HasMany
+    public static function first(): self
     {
-        return $this->hasMany(StockConfirmation::class);
-    }
-
-    public function salesRecords(): HasMany
-    {
-        return $this->hasMany(SalesRecord::class);
-    }
-
-    public function restocks(): HasMany
-    {
-        return $this->hasMany(Restock::class);
-    }
-
-    public function stockRequests(): HasMany
-    {
-        return $this->hasMany(StockRequest::class);
-    }
-
-    public function stockRecommendations(): HasMany
-    {
-        return $this->hasMany(StockRecommendation::class);
-    }
-
-    public function crmAlerts(): HasMany
-    {
-        return $this->hasMany(CrmAlert::class);
-    }
-
-    public function crmFollowUps(): HasMany
-    {
-        return $this->hasMany(CrmFollowUp::class);
-    }
-
-    public function systemSettings(): HasMany
-    {
-        return $this->hasMany(SystemSetting::class);
+        return new self();
     }
 }

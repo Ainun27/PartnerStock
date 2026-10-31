@@ -140,42 +140,7 @@ class KunjunganController extends Controller
 
             $totalPendapatan = $jumlahLaku * $warung->harga_titip;
 
-            // 1. Simpan SalesRecord resmi
-            $salesRecord = SalesRecord::create([
-                'supplier_id' => $warung->supplier_id ?: 1,
-                'warung_id' => $warung->id,
-                'product_id' => $product ? $product->id : null,
-                'period_start' => $warung->sesi_terakhir ? $warung->sesi_terakhir->tanggal_titip : $validated['tanggal_cek'],
-                'period_end' => $validated['tanggal_cek'],
-                'distributed_quantity' => $taro,
-                'opening_stock' => $taro,
-                'remaining_stock' => $sisaFisik,
-                'sold_quantity' => $jumlahLaku,
-                'verified_at' => now(),
-            ]);
-
-            // 2. Simpan Restock resmi (distribusi baru & penarikan dicatat terpisah!)
-            $restock = Restock::create([
-                'supplier_id' => $warung->supplier_id ?: 1,
-                'warung_id' => $warung->id,
-                'product_id' => $product ? $product->id : null,
-                'distribution_date' => $validated['tanggal_cek'],
-                'quantity_delivered' => $jumlahTitip,
-                'old_stock_withdrawn' => $oldStockWithdrawn,
-                'approved_quantity' => $jumlahTitip,
-                'notes' => $validated['catatan'] ?? null,
-            ]);
-
-            // 3. Perbarui konfirmasi stok terakhir jika ada
-            $latestConf = $warung->stockConfirmations()->whereNull('physically_checked_stock')->first();
-            if ($latestConf) {
-                $latestConf->physically_checked_stock = $sisaFisik;
-                $diff = abs($latestConf->reported_remaining_stock - $sisaFisik);
-                $latestConf->data_status = ($diff === 0) ? 'sesuai' : 'selisih';
-                $latestConf->save();
-            }
-
-            // 4. Simpan ke StokPenjualan (Pusat Transaksi Distribusi & Penjualan Konsinyasi)
+            // Simpan ke StokPenjualan (Pusat Transaksi Distribusi & Penjualan Konsinyasi)
             $kunjungan = StokPenjualan::create([
                 'warung_id' => $warung->id,
                 'product_id' => $product ? $product->id : null,
@@ -210,13 +175,13 @@ class KunjunganController extends Controller
                 }
             }
 
-            // Tangani stock_requests pending
-            StockRequest::where('warung_id', $warung->id)
-                ->where('status', 'menunggu')
+            // Tangani pengajuan stok pending untuk warung ini
+            PengajuanStok::where('warung_id', $warung->id)
+                ->where('status', 'pending')
                 ->update([
-                    'status' => 'dipenuhi',
-                    'approved_quantity' => $jumlahTitip,
-                    'fulfilled_at' => now(),
+                    'status' => 'selesai',
+                    'tanggal_diproses' => now(),
+                    'catatan_pemasok' => 'Dipenuhi saat kunjungan distribusi konsinyasi.',
                 ]);
 
             return redirect()->route('admin.kunjungan.index')

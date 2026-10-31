@@ -145,11 +145,6 @@ class KonsinyasiTest extends TestCase
         $response->assertRedirect('/portal/' . $warung->kode_unik);
         $response->assertSessionHas('success');
 
-        $this->assertDatabaseHas('stock_confirmations', [
-            'warung_id' => $warung->id,
-            'reported_remaining_stock' => 12,
-        ]);
-
         $warung->refresh();
         $this->assertEquals(12, $warung->stok_saat_ini);
 

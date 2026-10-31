@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,7 +16,6 @@ class Warung extends Model
     protected $table = 'warungs';
 
     protected $fillable = [
-        'supplier_id',
         'user_id',
         'name',
         'owner_name',
@@ -86,49 +86,9 @@ class Warung extends Model
     }
 
     // Relationships
-    public function supplier(): BelongsTo
-    {
-        return $this->belongsTo(Supplier::class);
-    }
-
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    public function stockConfirmations(): HasMany
-    {
-        return $this->hasMany(StockConfirmation::class)->orderBy('confirmation_date', 'desc');
-    }
-
-    public function salesRecords(): HasMany
-    {
-        return $this->hasMany(SalesRecord::class)->orderBy('period_end', 'desc');
-    }
-
-    public function restocks(): HasMany
-    {
-        return $this->hasMany(Restock::class)->orderBy('distribution_date', 'desc');
-    }
-
-    public function stockRequests(): HasMany
-    {
-        return $this->hasMany(StockRequest::class)->orderBy('created_at', 'desc');
-    }
-
-    public function stockRecommendations(): HasMany
-    {
-        return $this->hasMany(StockRecommendation::class)->orderBy('calculation_date', 'desc');
-    }
-
-    public function crmAlerts(): HasMany
-    {
-        return $this->hasMany(CrmAlert::class)->orderBy('created_at', 'desc');
-    }
-
-    public function crmFollowUps(): HasMany
-    {
-        return $this->hasMany(CrmFollowUp::class)->orderBy('follow_up_date', 'desc');
     }
 
     public function stokPenjualans(): HasMany
@@ -141,12 +101,36 @@ class Warung extends Model
         return $this->hasMany(PengajuanStok::class, 'warung_id')->orderBy('created_at', 'desc');
     }
 
+    // Kompatibilitas query salesRecords & restocks (merujuk langsung ke stok_penjualans)
+    public function salesRecords(): HasMany
+    {
+        return $this->hasMany(StokPenjualan::class, 'warung_id')->whereNotNull('tanggal_cek')->orderBy('tanggal_cek', 'desc');
+    }
+
+    public function restocks(): HasMany
+    {
+        return $this->hasMany(StokPenjualan::class, 'warung_id')->whereNotNull('tanggal_titip')->orderBy('tanggal_titip', 'desc');
+    }
+
+    public function stockRequests(): HasMany
+    {
+        return $this->hasMany(PengajuanStok::class, 'warung_id')->orderBy('created_at', 'desc');
+    }
+
     /**
      * Konfirmasi stok terbaru yang dilaporkan melalui WA
      */
-    public function getLatestStockConfirmationAttribute(): ?StockConfirmation
+    public function getLatestStockConfirmationAttribute(): ?object
     {
-        return $this->stockConfirmations()->orderBy('confirmation_date', 'desc')->first();
+        $conf = StockConfirmation::latestForWarung($this->id);
+        if ($conf) {
+            return $conf;
+        }
+
+        return (object) [
+            'confirmation_date' => Carbon::parse($this->updated_at ?: now()),
+            'reported_remaining_stock' => (int) $this->stok_saat_ini,
+        ];
     }
 
     /**
@@ -154,13 +138,7 @@ class Warung extends Model
      */
     public function getNeedsStockConfirmationAttribute(): bool
     {
-        $latest = $this->latest_stock_confirmation;
-        if (!$latest) {
-            return true;
-        }
-
-        // Jika konfirmasi terakhir lebih dari 10 hari yang lalu
-        return $latest->confirmation_date->diffInDays(now()) >= 10;
+        return (int) $this->stok_saat_ini <= 5;
     }
 
     /**
@@ -168,12 +146,6 @@ class Warung extends Model
      */
     public function getRataRataLakuAttribute(): float
     {
-        // Utamakan sales_records jika ada
-        $salesAvg = $this->salesRecords()->avg('sold_quantity');
-        if ($salesAvg !== null && $this->salesRecords()->count() > 0) {
-            return round((float) $salesAvg, 1);
-        }
-
         $riwayatLaku = $this->stokPenjualans()
             ->whereNotNull('tanggal_cek')
             ->where('jumlah_laku', '>', 0)
@@ -191,10 +163,6 @@ class Warung extends Model
      */
     public function getTotalTerjualAttribute(): int
     {
-        $salesSum = (int) $this->salesRecords()->sum('sold_quantity');
-        if ($salesSum > 0) {
-            return $salesSum;
-        }
         return (int) $this->stokPenjualans()->sum('jumlah_laku');
     }
 

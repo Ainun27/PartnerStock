@@ -55,9 +55,7 @@ class WarungPortalController extends Controller
             $q->orderBy('created_at', 'desc');
         }, 'stokPenjualans' => function($q) {
             $q->orderBy('created_at', 'desc')->limit(5);
-        }, 'stockConfirmations' => function($q) {
-            $q->orderBy('confirmation_date', 'desc')->limit(5);
-        }, 'salesRecords', 'restocks'])->where('kode_unik', strtoupper($kode_unik))->firstOrFail();
+        }])->where('kode_unik', strtoupper($kode_unik))->firstOrFail();
 
         // Wajibkan autentikasi PIN kecuali jika admin login
         if (session('portal_warung_id') != $warung->id && !auth()->check()) {
@@ -75,8 +73,8 @@ class WarungPortalController extends Controller
         $kunjunganTerakhir = $warung->stokPenjualans->first();
         $singleProduct = Product::first();
 
-        $latestConfirmation = $warung->stockConfirmations->first();
-        $isConfirmedRecently = $latestConfirmation && Carbon::parse($latestConfirmation->confirmation_date)->diffInDays(now()) <= 7;
+        $latestConfirmation = $warung->latest_stock_confirmation;
+        $isConfirmedRecently = $latestConfirmation && isset($latestConfirmation->confirmation_date) && Carbon::parse($latestConfirmation->confirmation_date)->diffInDays(now()) <= 7;
 
         // Jadwal distribusi berikutnya (siklus 14 hari)
         if ($kunjunganTerakhir && $kunjunganTerakhir->tanggal_cek) {
@@ -85,7 +83,7 @@ class WarungPortalController extends Controller
             $jadwalDistribusiNext = now()->addDays(7);
         }
 
-        $daftarKonfirmasi = $warung->stockConfirmations()->latest('confirmation_date')->limit(5)->get();
+        $daftarKonfirmasi = StockConfirmation::all()->filter(fn($c) => $c->warung_id == $warung->id)->take(5);
         $daftarDistribusi = $warung->stokPenjualans()->latest('created_at')->limit(5)->get();
 
         return view('portal.show', compact(
@@ -112,18 +110,15 @@ class WarungPortalController extends Controller
             'notes' => 'nullable|string|max:500',
         ]);
 
+        $warung->stok_saat_ini = $validated['reported_remaining_stock'];
+        $warung->save();
+
         StockConfirmation::create([
-            'supplier_id' => $warung->supplier_id ?: 1,
             'warung_id' => $warung->id,
             'confirmation_date' => $validated['confirmation_date'],
             'reported_remaining_stock' => $validated['reported_remaining_stock'],
-            'physically_checked_stock' => null,
-            'data_status' => 'menunggu_pemeriksaan',
             'notes' => $validated['notes'] ?: 'Konfirmasi mandiri via Portal Warung Mitra.',
         ]);
-
-        $warung->stok_saat_ini = $validated['reported_remaining_stock'];
-        $warung->save();
 
         return redirect()->route('portal.show', $warung->kode_unik)
             ->with('success', "Konfirmasi sisa stok ({$validated['reported_remaining_stock']} bungkus) berhasil dikirimkan!");
@@ -139,27 +134,13 @@ class WarungPortalController extends Controller
             'catatan' => 'nullable|string|max:1000',
         ]);
 
-        $defaultProduct = Product::first();
-
-        // 1. Simpan ke PengajuanStok (backward compatible)
+        // Simpan langsung ke PengajuanStok
         $pengajuan = PengajuanStok::create([
             'warung_id' => $warung->id,
             'tanggal_pengajuan' => $validated['tanggal_pengajuan'],
             'jumlah_diminta' => $validated['jumlah_diminta'],
             'status' => 'pending',
             'catatan' => $validated['catatan'] ?? null,
-        ]);
-
-        // 2. Simpan ke StockRequest resmi
-        StockRequest::create([
-            'supplier_id' => $warung->supplier_id ?: 1,
-            'warung_id' => $warung->id,
-            'product_id' => $defaultProduct ? $defaultProduct->id : null,
-            'requested_quantity' => $validated['jumlah_diminta'],
-            'approved_quantity' => null,
-            'reason' => $validated['catatan'] ?? 'Permintaan stok tambahan dari portal warung mitra.',
-            'status' => 'menunggu',
-            'requested_at' => now(),
         ]);
 
         // Evaluasi aturan CRM (Reorder alert)

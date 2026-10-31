@@ -50,7 +50,6 @@ class DatabaseSeeder extends Seeder
         // 2. Satu-satunya Produk Pak Aceng: Keripik Pisang Original
         $product = Product::updateOrCreate(
             [
-                'supplier_id' => $supplier->id,
                 'product_code' => 'KRP-ORI',
             ],
             [
@@ -207,7 +206,6 @@ class DatabaseSeeder extends Seeder
                 ]
             );
 
-            $data['supplier_id'] = $supplier->id;
             $data['user_id'] = $warungUser->id;
 
             $warung = Warung::updateOrCreate(
@@ -574,42 +572,18 @@ class DatabaseSeeder extends Seeder
         int $withdrawn,
         string $notes
     ): void {
-        // 1. Simpan SalesRecord resmi
-        SalesRecord::create([
-            'supplier_id' => $supplier->id,
-            'warung_id' => $warung->id,
-            'product_id' => $product->id,
-            'period_start' => $startDate->toDateString(),
-            'period_end' => $endDate->toDateString(),
-            'distributed_quantity' => $distributed,
-            'opening_stock' => $distributed,
-            'remaining_stock' => $remaining,
-            'sold_quantity' => $sold,
-            'verified_at' => $endDate,
-        ]);
-
-        // 2. Simpan Restock resmi (distribusi & penarikan dicatat terpisah)
-        Restock::create([
-            'supplier_id' => $supplier->id,
-            'warung_id' => $warung->id,
-            'product_id' => $product->id,
-            'distribution_date' => $startDate->toDateString(),
-            'quantity_delivered' => $distributed,
-            'old_stock_withdrawn' => $withdrawn,
-            'approved_quantity' => $distributed,
-            'notes' => $notes,
-        ]);
-
         $decision = StokPenjualan::hitungKeputusan($distributed, $remaining);
         $rekomendasiTitip = (int) $decision['rekomendasi_titip'];
         $keputusanText = $decision['ringkasan'] . ' (' . $decision['label'] . ')';
 
-        // 3. Simpan backward compatible StokPenjualan
+        // Simpan ke StokPenjualan (Pusat Distribusi, Cek Fisik, Terjual & Retur)
         StokPenjualan::create([
             'warung_id' => $warung->id,
+            'product_id' => $product->id,
             'tipe_transaksi' => 'sesi',
             'tanggal_titip' => $startDate->toDateString(),
             'jumlah_titip' => $rekomendasiTitip,
+            'old_stock_withdrawn' => $withdrawn,
             'tanggal_cek' => $endDate->toDateString(),
             'stok_sebelumnya' => $distributed,
             'jumlah_laku' => $sold,

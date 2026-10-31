@@ -35,9 +35,9 @@ class User extends Authenticatable
         ];
     }
 
-    public function supplier(): HasOne
+    public function supplier(): Supplier
     {
-        return $this->hasOne(Supplier::class);
+        return new Supplier(['user_id' => $this->id, 'business_name' => 'Keripik Pisang Original Pak Aceng']);
     }
 
     public function warung(): HasOne
