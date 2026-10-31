@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\CrmAlert;
 use App\Models\CrmFollowUp;
+use App\Models\PengajuanStok;
 use App\Models\Product;
 use App\Models\Restock;
 use App\Models\SalesRecord;
@@ -498,6 +499,62 @@ class DatabaseSeeder extends Seeder
                 'weights_used' => [0.20, 0.30, 0.50],
                 'data_status' => 'cukup',
                 'adjustment_reason' => 'Sesuai rekomendasi WMA 3 periode meningkat.',
+            ]
+        );
+
+        // 8. Data Contoh Permintaan Tambahan Stok (PO) dari Warung Mitra
+        PengajuanStok::firstOrCreate(
+            [
+                'warung_id' => $createdWarungs[0]->id, // Warung Berkah Bu Siti
+                'tanggal_pengajuan' => Carbon::now()->subDays(2)->toDateString(),
+            ],
+            [
+                'jumlah_diminta' => 15,
+                'status' => 'pending',
+                'catatan' => 'Toples keripik pisang hampir kosong menjelang akhir pekan, mohon tambahan 15 bungkus ya Pak.',
+                'catatan_pemasok' => null,
+            ]
+        );
+
+        PengajuanStok::firstOrCreate(
+            [
+                'warung_id' => $createdWarungs[1]->id, // Warung Madura Cak Rozaq
+                'tanggal_pengajuan' => Carbon::now()->subDays(4)->toDateString(),
+            ],
+            [
+                'jumlah_diminta' => 20,
+                'status' => 'diproses',
+                'catatan' => 'Banyak mahasiswa mencari keripik original, minta kirim tambahan segera.',
+                'catatan_pemasok' => 'Sudah masuk rencana muatan pengiriman armada hari Sabtu.',
+                'tanggal_diproses' => Carbon::now()->subDay(),
+            ]
+        );
+
+        PengajuanStok::firstOrCreate(
+            [
+                'warung_id' => $createdWarungs[2]->id, // Kelontong Pak Min
+                'tanggal_pengajuan' => Carbon::now()->subDays(10)->toDateString(),
+            ],
+            [
+                'jumlah_diminta' => 10,
+                'status' => 'selesai',
+                'catatan' => 'Pesanan tambahan untuk hajatan warga sekitar warung.',
+                'catatan_pemasok' => 'Stok telah diserahterimakan pada kunjungan reguler.',
+                'tanggal_diproses' => Carbon::now()->subDays(9),
+            ]
+        );
+
+        StockRequest::firstOrCreate(
+            [
+                'warung_id' => $createdWarungs[0]->id,
+                'supplier_id' => $supplier->id,
+                'product_id' => $product->id,
+                'requested_quantity' => 15,
+            ],
+            [
+                'reason' => 'Toples keripik pisang hampir kosong menjelang akhir pekan.',
+                'status' => 'menunggu',
+                'requested_at' => Carbon::now()->subDays(2),
             ]
         );
     }
