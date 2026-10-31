@@ -1,4 +1,4 @@
-# 🍌 Aplikasi Titip Jual Produk Berbasis Web
+# Aplikasi Titip Jual Produk Berbasis Web
 ### Analisis Penjualan, Rekomendasi Stok (WMA), dan Aturan CRM Konsinyasi
 
 Aplikasi web manajemen titip jual (konsinyasi) produk berbasis **Laravel 12** dan **PostgreSQL 18** yang dibangun sesuai spesifikasi sistem untuk mengelola rantai pasok dan distribusi usaha **Pak Aceng** ke warung-warung mitra.
