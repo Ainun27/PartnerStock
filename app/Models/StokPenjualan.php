@@ -14,9 +14,11 @@ class StokPenjualan extends Model
 
     protected $fillable = [
         'warung_id',
+        'product_id',
         'tipe_transaksi',
         'tanggal_titip',
         'jumlah_titip',
+        'old_stock_withdrawn',
         'tanggal_cek',
         'stok_sebelumnya',
         'sisa_fisik',
@@ -31,6 +33,7 @@ class StokPenjualan extends Model
         'tanggal_titip' => 'date',
         'tanggal_cek' => 'date',
         'jumlah_titip' => 'integer',
+        'old_stock_withdrawn' => 'integer',
         'stok_sebelumnya' => 'integer',
         'sisa_fisik' => 'integer',
         'jumlah_laku' => 'integer',
@@ -41,6 +44,11 @@ class StokPenjualan extends Model
     public function warung(): BelongsTo
     {
         return $this->belongsTo(Warung::class, 'warung_id');
+    }
+
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class, 'product_id');
     }
 
     /**

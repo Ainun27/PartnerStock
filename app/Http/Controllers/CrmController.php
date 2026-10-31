@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CrmAlert;
 use App\Models\CrmFollowUp;
-use App\Models\StockRequest;
+use App\Models\PengajuanStok;
 use App\Models\Warung;
 use App\Services\CrmService;
 use App\Services\RecommendationService;
@@ -66,9 +66,9 @@ class CrmController extends Controller
 
         // 3. Reorder Recommendation
         $reorderRecs = $this->recService->getAllRecommendations();
-        $pendingStockRequests = StockRequest::with('warung')
-            ->where('status', 'menunggu')
-            ->orderBy('requested_at', 'desc')
+        $pendingStockRequests = PengajuanStok::with('warung')
+            ->where('status', 'pending')
+            ->orderBy('tanggal_pengajuan', 'desc')
             ->get();
 
         $summary = $this->crmService->getCrmSummary();

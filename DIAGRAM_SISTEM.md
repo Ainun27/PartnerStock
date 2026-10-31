@@ -504,12 +504,12 @@ stop
 
 ---
 
-## 3. Class Diagram Komprehensif
+## 3. Class Diagram Terpadu (Domain Model, Service & Controller)
 
-Class Diagram di bawah ini memodelkan seluruh arsitektur kode sumber platform **PartnerStock**, meliputi:
-- **Lapisan Model Eloquent (13 Entitas)** dengan atribut, tipe data, dan relasi *Foreign Key* / *Association*.
-- **Lapisan Service Logika Bisnis** (`WmaService`, `RecommendationService`, `CrmService`).
-- **Lapisan Controller (MVC)** pengatur *routing* dan aliran data.
+Class Diagram di bawah ini memodelkan arsitektur kode sumber platform **PartnerStock** yang telah disederhanakan dan terintegrasi secara modular:
+- **Lapisan Model Eloquent (10 Entitas Inti)**: Menyatukan pencatatan distribusi dan penjualan ke dalam `StokPenjualan`, serta permintaan restock ke dalam `PengajuanStok` tanpa redundansi.
+- **Lapisan Service Logika Bisnis**: `WmaService` (peramalan 3 periode), `RecommendationService` (rekomendasi muatan mode A/B), dan `CrmService` (deteksi churn & tindak lanjut).
+- **Lapisan Controller (MVC)**: Pengendali antarmuka web supplier dan portal mitra warung.
 
 ```plantuml
 @startuml class_diagram_partnerstock
@@ -535,11 +535,11 @@ package "App\\Models (Domain Data Entities)" {
         +password: string
         +role: string
         +is_active: bool
-        +created_at: timestamp
-        +updated_at: timestamp
         --
         +supplier(): BelongsTo
         +warung(): HasOne
+        +isSupplier(): bool
+        +isMitra(): bool
     }
 
     class Supplier {
@@ -548,8 +548,6 @@ package "App\\Models (Domain Data Entities)" {
         +business_name: string
         +phone: string
         +address: text
-        +created_at: timestamp
-        +updated_at: timestamp
         --
         +user(): BelongsTo
         +products(): HasMany
@@ -572,21 +570,15 @@ package "App\\Models (Domain Data Entities)" {
         +partnership_status: string
         +delivery_interval_days: int
         +is_aktif: bool
-        +deleted_at: timestamp
         --
         +supplier(): BelongsTo
-        +user(): BelongsTo
         +stokPenjualans(): HasMany
         +pengajuanStoks(): HasMany
         +stockConfirmations(): HasMany
-        +salesRecords(): HasMany
-        +restocks(): HasMany
-        +stockRequests(): HasMany
         +stockRecommendations(): HasMany
         +crmAlerts(): HasMany
-        +crmFollowUps(): HasMany
         +getLatestStockConfirmationAttribute(): StockConfirmation
-        +getNeedsStockConfirmationAttribute(): bool
+        +getSesiTerakhirAttribute(): StokPenjualan
     }
 
     class Product {
@@ -600,24 +592,28 @@ package "App\\Models (Domain Data Entities)" {
         +is_active: bool
         --
         +supplier(): BelongsTo
+        +stokPenjualans(): HasMany
     }
 
     class StokPenjualan {
         +id: int
         +warung_id: int
+        +product_id: int
         +tipe_transaksi: string
-        +tanggal_titip: date
-        +jumlah_titip: int
         +tanggal_cek: date
+        +tanggal_titip: date
         +stok_sebelumnya: int
         +sisa_fisik: int
         +jumlah_laku: int
+        +jumlah_titip: int
+        +old_stock_withdrawn: int
         +sisa_stok: int
         +total_pendapatan: int
         +catatan: text
         +keputusan_stok: string
         --
         +warung(): BelongsTo
+        +product(): BelongsTo
         +{static} hitungKeputusan(taro: int, sisa: int, siklus: int): array
         +getSisaFisikAttribute(value): int
     }
@@ -633,98 +629,69 @@ package "App\\Models (Domain Data Entities)" {
         +tanggal_diproses: datetime
         --
         +warung(): BelongsTo
-        +getEstimasiTibaAttribute(): Carbon
         +getStatusLabelAttribute(): string
         +getStatusBadgeClassAttribute(): string
     }
 
     class StockConfirmation {
         +id: int
+        +supplier_id: int
         +warung_id: int
         +confirmation_date: date
         +reported_remaining_stock: int
-        +notes: text
-        +status: string
-        --
-        +warung(): BelongsTo
-    }
-
-    class SalesRecord {
-        +id: int
-        +warung_id: int
-        +product_id: int
-        +period_start: date
-        +period_end: date
-        +opening_stock: int
-        +remaining_stock: int
-        +sold_quantity: int
+        +physically_checked_stock: int
+        +data_status: string
         +notes: text
         --
         +warung(): BelongsTo
-        +product(): BelongsTo
-    }
-
-    class Restock {
-        +id: int
-        +warung_id: int
-        +product_id: int
-        +distribution_date: date
-        +quantity_delivered: int
-        +old_stock_withdrawn: int
-        +notes: text
-        --
-        +warung(): BelongsTo
-        +product(): BelongsTo
+        +supplier(): BelongsTo
     }
 
     class StockRecommendation {
         +id: int
+        +supplier_id: int
         +warung_id: int
         +calculation_date: date
-        +wma_forecast: float
+        +forecast_quantity: float
         +recommended_quantity: int
         +approved_quantity: int
         +consignment_mode: string
-        +status: string
-        +explanation: text
+        +data_status: string
+        +adjustment_reason: text
         --
         +warung(): BelongsTo
+        +supplier(): BelongsTo
     }
 
     class CrmAlert {
         +id: int
+        +supplier_id: int
         +warung_id: int
         +category: string
-        +title: string
+        +trigger_type: string
         +description: text
-        +severity: string
+        +evidence_data: json
         +status: string
-        +dedup_hash: string
+        +resolved_at: datetime
         --
         +warung(): BelongsTo
+        +supplier(): BelongsTo
         +followUps(): HasMany
     }
 
     class CrmFollowUp {
         +id: int
         +crm_alert_id: int
+        +supplier_id: int
         +warung_id: int
         +follow_up_date: date
         +contact_method: string
-        +communication_result: text
-        +action_plan: text
+        +result_notes: text
+        +next_action: text
+        +status: string
         --
         +crmAlert(): BelongsTo
         +warung(): BelongsTo
-    }
-
-    class SystemSetting {
-        +id: int
-        +key: string
-        +value: text
-        --
-        +{static} get(key: string, default: any): any
-        +{static} set(key: string, value: any): SystemSetting
     }
 }
 
@@ -741,8 +708,7 @@ package "App\\Services (Business Logic Engine)" {
         --
         +getDefaultConsignmentMode(): string
         +getRecommendationForWarung(warung: Warung, mode: string): array
-        +getRecommendationsForAllWarungs(mode: string): array
-        +calculateVehicleLoad(recommendations: array): array
+        +getAllRecommendations(mode: string): array
     }
 
     class CrmService {
@@ -751,8 +717,8 @@ package "App\\Services (Business Logic Engine)" {
         --
         +evaluateAll(supplierId: int): array
         +evaluateWarung(warung: Warung): array
-        -generateDedupHash(warungId: int, category: string, sub: string): string
-        +recordFollowUp(alert: CrmAlert, data: array): CrmFollowUp
+        +recordFollowUp(alert: CrmAlert, method: string, notes: string, nextAction: string, status: string): CrmFollowUp
+        +getCrmSummary(supplierId: int): array
     }
 }
 
@@ -794,10 +760,6 @@ package "App\\Http\\Controllers (Application Web Layer)" {
         +updateStatus(request: Request, id: int): RedirectResponse
     }
 
-    class ReportController {
-        +index(request: Request): View
-    }
-
     class WarungPortalController {
         +index(): View
         +authByPin(request: Request): RedirectResponse
@@ -806,25 +768,35 @@ package "App\\Http\\Controllers (Application Web Layer)" {
         +submitPengajuan(request: Request, kode_unik: string): RedirectResponse
         +logout(): RedirectResponse
     }
+
+    class CrmController {
+        -crmService: CrmService
+        -wmaService: WmaService
+        -recService: RecommendationService
+        --
+        +index(request: Request): View
+        +storeFollowUp(request: Request, alertId: int): RedirectResponse
+    }
 }
 
-' Hubungan Antar Model (Data Relational Structure)
+' Relasi Antar Model (Data Relational Structure)
 User "1" *-- "0..1" Supplier : owns
 User "1" *-- "0..1" Warung : links to
 Supplier "1" *-- "0..*" Warung : manages
 Supplier "1" *-- "0..*" Product : manufactures
-Warung "1" *-- "0..*" StokPenjualan : records
-Warung "1" *-- "0..*" PengajuanStok : requests
-Warung "1" *-- "0..*" StockConfirmation : confirms
-Warung "1" *-- "0..*" SalesRecord : sales history
-Warung "1" *-- "0..*" Restock : deliveries
-Warung "1" *-- "0..*" StockRecommendation : forecasts
-Warung "1" *-- "0..*" CrmAlert : alerts
-Warung "1" *-- "0..*" CrmFollowUp : follow ups
-CrmAlert "1" *-- "0..*" CrmFollowUp : logs
+Supplier "1" *-- "0..*" StockConfirmation : receives
+Supplier "1" *-- "0..*" StockRecommendation : calculates
+Supplier "1" *-- "0..*" CrmAlert : monitors
 
-Product "1" -- "0..*" SalesRecord : references
-Product "1" -- "0..*" Restock : references
+Warung "1" *-- "0..*" StokPenjualan : records distribution & sales
+Warung "1" *-- "0..*" PengajuanStok : requests restock (PO)
+Warung "1" *-- "0..*" StockConfirmation : pre-visit confirmation
+Warung "1" *-- "0..*" StockRecommendation : forecast target
+Warung "1" *-- "0..*" CrmAlert : churn alerts
+
+Product "1" -- "0..*" StokPenjualan : consigned item
+
+CrmAlert "1" *-- "0..*" CrmFollowUp : action history
 
 ' Dependensi Service Layer
 RecommendationService ..> WmaService : uses
@@ -833,34 +805,33 @@ CrmService ..> RecommendationService : uses
 RecommendationService ..> Warung : evaluates
 WmaService ..> Warung : evaluates
 CrmService ..> CrmAlert : generates
-CrmService ..> CrmFollowUp : stores
 
-' Dependensi Controller -> Service / Model
+' Dependensi Controller
 DashboardController ..> CrmService : invokes evaluateAll()
 DashboardController ..> RecommendationService : queries
 DashboardController ..> Warung : queries
 KunjunganController ..> StokPenjualan : creates
-KunjunganController ..> Restock : creates
-KunjunganController ..> SalesRecord : creates
 KunjunganController ..> Warung : updates stock
 WarungPortalController ..> Warung : authenticates PIN
 WarungPortalController ..> PengajuanStok : stores PO
 WarungPortalController ..> StockConfirmation : stores confirmation
 PengajuanAdminController ..> PengajuanStok : updates status
-ReportController ..> Restock : aggregates
-ReportController ..> SalesRecord : aggregates
+CrmController ..> CrmService : invokes evaluateAll()
 
 @enduml
 ```
 
 ---
 
-## 4. Entity Relationship Diagram (ERD Relasi Basis Data)
+## 4. Entity Relationship Diagram (ERD Relasi Basis Data Hasil Revisi)
 
-Diagram ERD (*Entity-Relationship Diagram*) di bawah ini memodelkan struktur fisik & konseptual basis data **PartnerStock (PostgreSQL: `konsinyasi_pisang`)** menggunakan notasi resmi **Crow's Foot (IE Notation)**.
+Diagram ERD (*Entity-Relationship Diagram*) di bawah ini memodelkan struktur basis data **PartnerStock (PostgreSQL: `konsinyasi_pisang`)** hasil penyederhanaan arsitektur menggunakan notasi resmi **Crow's Foot (IE Notation)**:
 
 > [!NOTE]
-> **Kaidah Standar Akademik**: Tabel bawaan *runtime framework* (`cache`, `cache_locks`, `jobs`, `job_batches`, `failed_jobs`, `sessions`, `password_reset_tokens`, `migrations`) **dikecualikan dari ERD**. Diagram ini murni menyajikan **13 Entitas Domain Bisnis Konsinyasi & CRM**, atribut kunci (*Primary Key & Foreign Key*), serta kardinalitas relasinya secara presisi.
+> **Penyederhanaan Utama**:
+> 1. Transaksi distribusi dan penjualan disatukan ke dalam `stok_penjualans` (mencakup stok sebelumnya, sisa fisik, terjual, titip baru, retur stok lama, dan pendapatan).
+> 2. Permintaan tambahan restock warung (PO) murni ditangani oleh `pengajuan_stoks`.
+> 3. Tabel infrastruktur *framework* (`sessions`, `cache`, `jobs`, `migrations`) dikecualikan dari pemodelan bisnis ini.
 
 ```plantuml
 @startuml erd_partnerstock
@@ -921,7 +892,6 @@ entity "warungs" as warungs {
     is_aktif : BOOLEAN
     created_at : TIMESTAMP
     updated_at : TIMESTAMP
-    deleted_at : TIMESTAMP
 }
 
 entity "products" as products {
@@ -942,13 +912,15 @@ entity "stok_penjualans" as stok_penjualans {
     * id : BIGINT <<PK>>
     --
     * warung_id : BIGINT <<FK>>
-    tipe_transaksi : VARCHAR(50) [titip_awal / kunjungan]
-    tanggal_titip : DATE
-    jumlah_titip : INT
+    product_id : BIGINT <<FK>>
+    tipe_transaksi : VARCHAR(50) [titip_awal / sesi]
     tanggal_cek : DATE
+    tanggal_titip : DATE
     stok_sebelumnya : INT
     sisa_fisik : INT
     jumlah_laku : INT
+    jumlah_titip : INT
+    old_stock_withdrawn : INT
     sisa_stok : INT
     total_pendapatan : INT
     catatan : TEXT
@@ -985,53 +957,17 @@ entity "stock_confirmations" as stock_confirmations {
     updated_at : TIMESTAMP
 }
 
-entity "sales_records" as sales_records {
-    * id : BIGINT <<PK>>
-    --
-    * supplier_id : BIGINT <<FK>>
-    * warung_id : BIGINT <<FK>>
-    product_id : BIGINT <<FK>>
-    period_start : DATE
-    period_end : DATE
-    distributed_quantity : INT
-    opening_stock : INT
-    remaining_stock : INT
-    sold_quantity : INT
-    verified_at : TIMESTAMP
-    created_at : TIMESTAMP
-    updated_at : TIMESTAMP
-}
-
-entity "restocks" as restocks {
-    * id : BIGINT <<PK>>
-    --
-    * supplier_id : BIGINT <<FK>>
-    * warung_id : BIGINT <<FK>>
-    product_id : BIGINT <<FK>>
-    distribution_date : DATE
-    quantity_delivered : INT
-    old_stock_withdrawn : INT
-    approved_quantity : INT
-    notes : TEXT
-    created_at : TIMESTAMP
-    updated_at : TIMESTAMP
-}
-
 entity "stock_recommendations" as stock_recommendations {
     * id : BIGINT <<PK>>
     --
     * supplier_id : BIGINT <<FK>>
     * warung_id : BIGINT <<FK>>
-    product_id : BIGINT <<FK>>
-    stock_confirmation_id : BIGINT <<FK>>
     calculation_date : DATE
     forecast_quantity : DECIMAL(8,2)
     recommended_quantity : INT
     approved_quantity : INT
     consignment_mode : VARCHAR(10) [A / B]
-    data_status : VARCHAR(50) [cukup / belum_cukup / perlu_konfirmasi]
-    source_periods : JSON
-    weights_used : JSON
+    data_status : VARCHAR(50) [cukup / belum_cukup]
     adjustment_reason : TEXT
     created_at : TIMESTAMP
     updated_at : TIMESTAMP
@@ -1044,7 +980,6 @@ entity "crm_alerts" as crm_alerts {
     * warung_id : BIGINT <<FK>>
     category : VARCHAR(100) [churn_prevention / data_mining / reorder]
     trigger_type : VARCHAR(100)
-    trigger_period : VARCHAR(50)
     description : TEXT
     evidence_data : JSON
     status : VARCHAR(50) [perlu_ditinjau / perlu_dihubungi / sudah_dihubungi / selesai]
@@ -1068,54 +1003,35 @@ entity "crm_follow_ups" as crm_follow_ups {
     updated_at : TIMESTAMP
 }
 
-entity "system_settings" as system_settings {
-    * id : BIGINT <<PK>>
-    --
-    supplier_id : BIGINT <<FK>>
-    * setting_key : VARCHAR(100) <<UNIQUE>>
-    setting_value : TEXT
-    description : VARCHAR(255)
-    created_at : TIMESTAMP
-    updated_at : TIMESTAMP
-}
-
 ' ========================================================
 ' Relasi Antar Entitas (Crow's Foot Notation)
 ' ========================================================
 
-' Relasi Pengguna & Profil
+' Relasi Pengguna & Profil Usaha
 users ||--o| suppliers : "1 user memiliki 0..1 profil supplier"
 users ||--o| warungs : "1 user opsional terhubung ke 0..1 warung"
 
 ' Relasi Supplier ke Entitas Operasional
 suppliers ||--o{ warungs : "membina banyak warung mitra"
 suppliers ||--o{ products : "memproduksi katalog produk"
-suppliers ||--o{ stock_confirmations : "menerima konfirmasi stok H-2"
-suppliers ||--o{ sales_records : "mencatat rekam penjualan konsinyasi"
-suppliers ||--o{ restocks : "melakukan pengiriman & penarikan"
-suppliers ||--o{ stock_recommendations : "menghasilkan kalkulasi rekomendasi WMA"
+suppliers ||--o{ stock_confirmations : "menerima konfirmasi sisa stok H-2"
+suppliers ||--o{ stock_recommendations : "menghasilkan peramalan WMA"
 suppliers ||--o{ crm_alerts : "memantau peringatan churn & tren"
-suppliers ||--o{ crm_follow_ups : "menjalankan tindak lanjut pembinaan"
-suppliers ||--o{ system_settings : "mengatur konfigurasi sistem"
+suppliers ||--o{ crm_follow_ups : "menjalankan aksi retensi"
 
-' Relasi Warung ke Aktivitas Transaksi & Portal
-warungs ||--o{ stok_penjualans : "memiliki riwayat sesi kunjungan konsinyasi"
-warungs ||--o{ pengajuan_stoks : "mengajukan permintaan restock mandiri (PO)"
+' Relasi Warung ke Transaksi Operasional
+warungs ||--o{ stok_penjualans : "riwayat distribusi & penjualan konsinyasi"
+warungs ||--o{ pengajuan_stoks : "mengajukan pesanan restock (PO)"
 warungs ||--o{ stock_confirmations : "melaporkan sisa stok pra-kunjungan"
-warungs ||--o{ sales_records : "memiliki histori penjualan periodik"
-warungs ||--o{ restocks : "menerima restock barang baru"
-warungs ||--o{ stock_recommendations : "menjadi target rekomendasi muatan WMA"
-warungs ||--o{ crm_alerts : "memiliki log evaluasi risiko churn"
-warungs ||--o{ crm_follow_ups : "menerima aksi retensi / pembinaan"
+warungs ||--o{ stock_recommendations : "target rekomendasi muatan armada"
+warungs ||--o{ crm_alerts : "memiliki evaluasi risiko churn"
 
-' Relasi Produk ke Transaksi
-products ||--o{ sales_records : "direferensikan dalam histori penjualan"
-products ||--o{ restocks : "dicatat pada pengiriman barang"
-products ||--o{ stock_recommendations : "dihitung peramalannya"
+' Relasi Produk ke Konsinyasi
+products ||--o{ stok_penjualans : "item barang yang dikonsinyasikan"
 
-' Relasi Spesifik Alur Kerja
-crm_alerts ||--o{ crm_follow_ups : "1 alert ditindaklanjuti 1 atau lebih follow up"
-stock_confirmations ||--o| stock_recommendations : "laporan fisik H-2 menjadi basis rekomendasi"
+' Relasi Alur Kerja Khusus
+crm_alerts ||--o{ crm_follow_ups : "1 alert ditindaklanjuti 1..* follow up"
+stock_confirmations ||--o| stock_recommendations : "sisa stok H-2 menjadi dasar rekomendasi Mode B"
 
 @enduml
 ```

@@ -234,13 +234,13 @@
                                     {{ $req->warung ? $req->warung->nama_warung : '-' }}
                                 </td>
                                 <td class="py-3 px-4 text-center font-black text-amber-700">
-                                    {{ $req->requested_quantity }} bungkus
+                                    {{ $req->jumlah_diminta ?? $req->requested_quantity }} bungkus
                                 </td>
                                 <td class="py-3 px-4 text-slate-600">
-                                    {{ $req->reason ?: '-' }}
+                                    {{ $req->catatan ?? $req->reason ?? '-' }}
                                 </td>
                                 <td class="py-3 px-4 text-slate-400 font-mono text-[11px]">
-                                    {{ $req->requested_at ? $req->requested_at->format('d/m/Y') : '-' }}
+                                    {{ $req->tanggal_pengajuan ? \Carbon\Carbon::parse($req->tanggal_pengajuan)->format('d/m/Y') : ($req->requested_at ? $req->requested_at->format('d/m/Y') : '-') }}
                                 </td>
                                 <td class="py-3 px-4 text-right">
                                     <a href="{{ route('admin.pengajuan.index') }}" class="app-btn-primary px-3 py-1 text-xs">

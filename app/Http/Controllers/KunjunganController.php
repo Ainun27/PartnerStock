@@ -175,9 +175,10 @@ class KunjunganController extends Controller
                 $latestConf->save();
             }
 
-            // 4. Simpan ke StokPenjualan (backward compatible)
+            // 4. Simpan ke StokPenjualan (Pusat Transaksi Distribusi & Penjualan Konsinyasi)
             $kunjungan = StokPenjualan::create([
                 'warung_id' => $warung->id,
+                'product_id' => $product ? $product->id : null,
                 'tipe_transaksi' => 'sesi',
                 'tanggal_cek' => $validated['tanggal_cek'],
                 'tanggal_titip' => $jumlahTitip > 0 ? $validated['tanggal_cek'] : null,
@@ -185,6 +186,7 @@ class KunjunganController extends Controller
                 'sisa_fisik' => $sisaFisik,
                 'jumlah_laku' => $jumlahLaku,
                 'jumlah_titip' => $jumlahTitip,
+                'old_stock_withdrawn' => $oldStockWithdrawn,
                 'sisa_stok' => $stokAkhir,
                 'total_pendapatan' => $totalPendapatan,
                 'catatan' => $validated['catatan'] ?? null,
